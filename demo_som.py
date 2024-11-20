@@ -34,6 +34,9 @@ from task_adapter.sam.tasks.inference_sam_m2m_interactive import inference_sam_m
 from scipy.ndimage import label
 import numpy as np
 
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 '''
 build args
 '''
@@ -63,6 +66,8 @@ with torch.no_grad():
 @torch.no_grad()
 def inference(image, slider, mode, alpha, label_mode, anno_mode, *args, **kwargs):
     _image = image['background'].convert('RGB')
+    #resize image for local cuda simulation
+    _image = _image.resize((256, 256))
     _mask = image['layers'][0].convert('L') if image['layers'] else None
 
     if slider < 1.5:

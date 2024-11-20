@@ -38,11 +38,19 @@ metadata = MetadataCatalog.get('coco_2017_train_panoptic')
 
 from scipy.ndimage import label
 import numpy as np
+import os
+from dotenv import load_dotenv
+import gc
+
+load_dotenv()
+# Print the OpenAI API key to verify it's loaded correctly
+print(f'This is the api key: {os.environ["OPENAI_API_KEY"]}')
 
 from gpt4v import request_gpt4v
 from openai import OpenAI
 from pydub import AudioSegment
 from pydub.playback import play
+
 
 import matplotlib.colors as mcolors
 css4_colors = mcolors.CSS4_COLORS
@@ -67,14 +75,14 @@ opt_seem = init_distributed_seem(opt_seem)
 
 '''
 build model
-'''
-model_semsam = BaseModel(opt_semsam, build_model(opt_semsam)).from_pretrained(semsam_ckpt).eval().cuda()
-model_sam = sam_model_registry["vit_h"](checkpoint=sam_ckpt).eval().cuda()
-model_seem = BaseModel_Seem(opt_seem, build_model_seem(opt_seem)).from_pretrained(seem_ckpt).eval().cuda()
-
-with torch.no_grad():
-    with torch.autocast(device_type='cuda', dtype=torch.float16):
-        model_seem.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"], is_eval=True)
+''' # comment previous load model
+#model_semsam = BaseModel(opt_semsam, build_model(opt_semsam)).from_pretrained(semsam_ckpt).eval().cuda()
+#model_sam = sam_model_registry["vit_h"](checkpoint=sam_ckpt).eval().cuda()
+#model_seem = BaseModel_Seem(opt_seem, build_model_seem(opt_seem)).from_pretrained(seem_ckpt).eval().cuda()
+#
+#with torch.no_grad():
+#    with torch.autocast(device_type='cuda', dtype=torch.float16):
+#        model_seem.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"], is_eval=True)
 
 history_images = []
 history_masks = []
@@ -82,11 +90,15 @@ history_texts = []
 @torch.no_grad()
 def inference(image, slider, mode, alpha, label_mode, anno_mode, *args, **kwargs):
     global history_images; history_images = []
-    global history_masks; history_masks = []    
+    global history_masks; history_masks = []  
+    global current_model_name, current_model  # Track current model
+    
+    current_model = None
 
     _image = image['background'].convert('RGB')
     _mask = image['layers'][0].convert('L') if image['layers'] else None
 
+    # Determine which model to use based on slider and mode
     if slider < 1.5:
         model_name = 'seem'
     elif slider > 2.5:
@@ -111,7 +123,6 @@ def inference(image, slider, mode, alpha, label_mode, anno_mode, *args, **kwargs
         else:
             model_name = 'sam'
 
-
     if label_mode == 'Alphabet':
         label_mode = 'a'
     else:
@@ -119,6 +130,26 @@ def inference(image, slider, mode, alpha, label_mode, anno_mode, *args, **kwargs
 
     text_size, hole_scale, island_scale=640,100,100
     text, text_part, text_thresh = '','','0.0'
+    ### basically this is a hack to make the model work in local environment with lower memory
+    # Unload current model
+    del current_model
+    current_model = None  # Remove reference
+    gc.collect()  # Force garbage collection
+    torch.cuda.empty_cache()  # Free up the GPU memory
+
+    # Load the new model
+    if model_name == 'semantic-sam':
+        current_model = BaseModel(opt_semsam, build_model(opt_semsam)).from_pretrained(semsam_ckpt).eval().cuda()
+    elif model_name == 'sam':
+        current_model = sam_model_registry["vit_h"](checkpoint=sam_ckpt).eval().cuda()
+    elif model_name == 'seem':
+        current_model = BaseModel_Seem(opt_seem, build_model_seem(opt_seem)).from_pretrained(seem_ckpt).eval().cuda()
+        with torch.no_grad():
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                current_model.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"], is_eval=True)
+
+    model = current_model
+
     with torch.autocast(device_type='cuda', dtype=torch.float16):
         semantic=False
 
@@ -127,37 +158,43 @@ def inference(image, slider, mode, alpha, label_mode, anno_mode, *args, **kwargs
             spatial_masks = torch.stack([torch.from_numpy(labeled_array == i+1) for i in range(num_features)])
 
         if model_name == 'semantic-sam':
-            model = model_semsam
-            output, mask = inference_semsam_m2m_auto(model, _image, level, text, text_part, text_thresh, text_size, hole_scale, island_scale, semantic, label_mode=label_mode, alpha=alpha, anno_mode=anno_mode, *args, **kwargs)
+            output, mask = inference_semsam_m2m_auto(
+                model, _image, level, text, text_part, text_thresh,
+                text_size, hole_scale, island_scale, semantic,
+                label_mode=label_mode, alpha=alpha, anno_mode=anno_mode, *args, **kwargs)
 
         elif model_name == 'sam':
-            model = model_sam
             if mode == "Automatic":
-                output, mask = inference_sam_m2m_auto(model, _image, text_size, label_mode, alpha, anno_mode)
+                output, mask = inference_sam_m2m_auto(
+                    model, _image, text_size, label_mode, alpha, anno_mode)
             elif mode == "Interactive":
-                output, mask = inference_sam_m2m_interactive(model, _image, spatial_masks, text_size, label_mode, alpha, anno_mode)
+                output, mask = inference_sam_m2m_interactive(
+                    model, _image, spatial_masks, text_size, label_mode, alpha, anno_mode)
 
         elif model_name == 'seem':
-            model = model_seem
             if mode == "Automatic":
-                output, mask = inference_seem_pano(model, _image, text_size, label_mode, alpha, anno_mode)
+                output, mask = inference_seem_pano(
+                    model, _image, text_size, label_mode, alpha, anno_mode)
             elif mode == "Interactive":
-                output, mask = inference_seem_interactive(model, _image, spatial_masks, text_size, label_mode, alpha, anno_mode)
+                output, mask = inference_seem_interactive(
+                    model, _image, spatial_masks, text_size, label_mode, alpha, anno_mode)
 
-        # convert output to PIL image
+        # Convert output to PIL image
         history_masks.append(mask)
         history_images.append(Image.fromarray(output))
         return (output, [])
 
-
 def gpt4v_response(message, history):
     global history_images
-    global history_texts; history_texts = []    
+    global history_texts; history_texts = []
+
     try:
         res = request_gpt4v(message, history_images[0])
         history_texts.append(res)
         return res
     except Exception as e:
+        print(res)
+        print(e)
         return None
 
 def highlight(mode, alpha, label_mode, anno_mode, *args, **kwargs):
@@ -183,7 +220,7 @@ launch app
 
 demo = gr.Blocks()
 image = gr.ImageMask(label="Input", type="pil", sources=["upload"], interactive=True, brush=gr.Brush(colors=["#FFFFFF"]))
-slider = gr.Slider(1, 3, value=1.8, label="Granularity") # info="Choose in [1, 1.5), [1.5, 2.5), [2.5, 3] for [seem, semantic-sam (multi-level), sam]"
+slider = gr.Slider(1, 3, value=2, label="Granularity") # info="Choose in [1, 1.5), [1.5, 2.5), [2.5, 3] for [seem, semantic-sam (multi-level), sam]"
 mode = gr.Radio(['Automatic', 'Interactive', ], value='Automatic', label="Segmentation Mode")
 anno_mode = gr.CheckboxGroup(choices=["Mark", "Mask", "Box"], value=['Mark'], label="Annotation Mode")
 image_out = gr.AnnotatedImage(label="SoM Visual Prompt", height=512)
