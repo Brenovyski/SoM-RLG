@@ -33,7 +33,7 @@ def prepare_inputs(message, image):
     base64_image = encode_image_from_pil(image)
 
     payload = {
-        "model": "gpt-4o",
+        "model": "chatgpt-4o-latest",
         "messages": [
         {
             "role": "system",

@@ -260,4 +260,3 @@ with demo:
               outputs = image_out)
 
 demo.queue().launch(share=True,server_port=6092)
-
