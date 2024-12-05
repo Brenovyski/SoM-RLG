@@ -22,7 +22,7 @@ The list of models that will be tested are as followed:
 
 The structure of the benchmark will respect the following scheme:
 
-![benchmark](https://github.com/Brenovyski/SoM-RLG/benchmark/assets/benchmark_structure.png)
+![benchmark](https://github.com/Brenovyski/SoM-RLG/blob/benchmark/assets/benchmark_structure.png)
 
 
 # SoM-Bench: Evaluating Visual Grounding with Visual Prompting
