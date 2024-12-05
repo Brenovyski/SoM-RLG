@@ -13,14 +13,16 @@ The list of models that will be tested are as followed:
 | **gemini-exp-1121**        | Experimental Gemini model from November 2024.       | Explore experimental features and capabilities.   |
 | **Gemini 1.5 Flash**       | Standard version of the Gemini 1.5 series.          | Benchmark against a mid-tier Gemini model.        |
 | **Gemini 1.5 Flash-8B**    | 8-billion parameter version of Gemini 1.5 Flash.    | Test performance with a larger parameter size.    |
-| **Gemini 1.5 Pro**         | Advanced version of the Gemini 1.5 series.          | Compare advanced capabilities to other models.    |
-| **Claude 3.5 Sonnet**      | Anthropic's Claude model version 3.5.               | Evaluate a different model for cross-comparison.  |
+| **Gemini 1.5 Pro***        | Advanced version of the Gemini 1.5 series.          | Compare advanced capabilities to other models.    |
+| **Claude 3.5 Sonnet***     | Anthropic's Claude model version 3.5.               | Evaluate a different model for cross-comparison.  |
 
-The gemini pro have request limits with the free api key so they will be evaluated later.
-The claude version will possibly be not considered
+*The gemini pro have request limits with the free api key so they will be evaluated later.
+*The claude model will possibly be not considered
 
 
-The structure of the benchmark will respect the following scheme:     
+The structure of the benchmark will respect the following scheme:
+
+![benchmark](https://github.com/Brenovyski/SoM-RLG/benchmark/assets/benchmark_structure.png)
 
 
 # SoM-Bench: Evaluating Visual Grounding with Visual Prompting
