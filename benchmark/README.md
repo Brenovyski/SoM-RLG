@@ -10,7 +10,7 @@ The list of models that will be tested are as followed:
 | **chatgpt-4o-latest**      | The latest optimized version of OpenAI's ChatGPT-4. | Evaluate general performance and baseline marks.  |
 | **gpt-4o-mini**            | A smaller, optimized version of GPT-4.              | Test efficiency and accuracy with a smaller model.|
 | **gpt-4-turbo**            | A faster variant of GPT-4 designed for speed.       | Assess speed vs. quality trade-offs.              |
-| **gemini-exp-1121**        | Experimental Gemini model from November 2024.       | Explore experimental features and capabilities.   |
+| **gemini-exp-1206**        | Quality improvements, celebrate 1 year of Gemini      | Explore experimental features and capabilities.   |
 | **Gemini 1.5 Flash**       | Standard version of the Gemini 1.5 series.          | Benchmark against a mid-tier Gemini model.        |
 | **Gemini 1.5 Flash-8B**    | 8-billion parameter version of Gemini 1.5 Flash.    | Test performance with a larger parameter size.    |
 | **Gemini 1.5 Pro***        | Advanced version of the Gemini 1.5 series.          | Compare advanced capabilities to other models.    |
