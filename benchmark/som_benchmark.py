@@ -207,7 +207,7 @@ def send_requests_to_models(benchmark_key, image_data_list, prompts):
                 'response': response_text
             })
 
-            time.sleep(1)  # Adjust time if necessary
+            time.sleep(10)  # Adjust time if necessary
 
     print(f"Completed requests for benchmark: {benchmark_key}")
     return results

@@ -195,7 +195,7 @@ def gpt4v_response(message, history):
         return None
 
 # Add Gemini response function
-def gemini_response(message, history):
+def geminipro_response(message, history):
     global history_images
     pil_image = history_images[0] if history_images else None
     files = []
@@ -206,6 +206,20 @@ def gemini_response(message, history):
     except Exception as e:
         print(e)
         return None
+    
+# Add Gemini response function
+def geminiexp_response(message, history):
+    global history_images
+    pil_image = history_images[0] if history_images else None
+    files = []
+    try:
+        # For demonstration, use gemini-1.5-flash model
+        res = request_genai_model("gemini-2.0-flash-exp", message, pil_image=pil_image, files=files)
+        return res
+    except Exception as e:
+        print(e)
+        return None
+
 
 
 def highlight(mode, alpha, label_mode, anno_mode, *args, **kwargs):
@@ -225,10 +239,34 @@ def highlight(mode, alpha, label_mode, anno_mode, *args, **kwargs):
         sections.append((mask_i, r))
     return (history_images[0], sections)
 
+# Function to process input and generate chat-like responses
+def process_input(user_input, chat_history, chat_history1, chat_history2):
+    # Update chat history for chatbox 1
+    chat_history.append((user_input))
+    chat_history.append((f"I heard: {user_input}"))
+
+    # Update chat history for chatbox 2
+    chat_history1.append((user_input))
+    chat_history1.append((f"Chat 1 heard: {user_input}"))
+
+    # Update chat history for chatbox 3
+    chat_history2.append((user_input))
+    chat_history2.append((f"Chat 2 heard: {user_input}"))
+
+    return chat_history, chat_history1, chat_history2
+
+# Define a callback to update chat histories
+def update_chats(user_input):
+    # These variables must be global or handled at a higher scope
+    global chat_history, chat_history1, chat_history2
+    chat_history, chat_history1, chat_history2 = process_input(
+        user_input, chat_history, chat_history1, chat_history2
+    )
+    return chat_history, chat_history1, chat_history2
+
 '''
 launch app
 '''
-
 demo = gr.Blocks()
 image = gr.ImageMask(label="Input", type="pil", sources=["upload"], interactive=True, brush=gr.Brush(colors=["#FFFFFF"]))
 slider = gr.Slider(1, 3, value=2, label="Granularity") # info="Choose in [1, 1.5), [1.5, 2.5), [2.5, 3] for [seem, semantic-sam (multi-level), sam]"
@@ -237,17 +275,19 @@ anno_mode = gr.CheckboxGroup(choices=["Mark", "Mask", "Box"], value=['Mark'], la
 image_out = gr.AnnotatedImage(label="SoM Visual Prompt", height=512)
 runBtn = gr.Button("Run")
 highlightBtn = gr.Button("Highlight")
-bot = gr.Chatbot(label="gpt4o + SoM", height=256)
 slider_alpha = gr.Slider(0, 1, value=0.05, label="Mask Alpha") #info="Choose in [0, 1]"
 label_mode = gr.Radio(['Number', 'Alphabet'], value='Number', label="Mark Mode")
 
 title = "Set-of-Mark (SoM) Visual Prompting for Extraordinary Visual Grounding in GPT-4V"
 description = "This is a demo for SoM Prompting..."
 
-# Additional chatbot for Gemini models
-bot_gemini = gr.Chatbot(label="Gemini + SoM", height=256)
+bot_gpt4v = gr.Chatbot(label="GPT-4V + SoM", height=400, elem_id="gpt4v-chat")
+bot_gemini_pro = gr.Chatbot(label="Gemini1.5Pro + SoM", height=400, elem_id="gemini1-chat")
+bot_gemini_exp = gr.Chatbot(label="Gemini2.0Exp + SoM", height=400, elem_id="gemini2-chat")
+
 
 with demo:
+    # Injecting CSS using Markdown with <style> tag
     gr.Markdown("<h1 style='text-align: center'><img src='https://som-gpt4v.github.io/website/img/som_logo.png' style='height:50px;display:inline-block'/>  Set-of-Mark (SoM) Prompting Unleashes Extraordinary Visual Grounding in GPT-4V</h1>")
     with gr.Row():
         with gr.Column():
@@ -264,15 +304,29 @@ with demo:
             image_out.render()
             runBtn.render()
             highlightBtn.render()
-    with gr.Row():    
-        gr.ChatInterface(chatbot=bot, fn=gpt4v_response)
+
+    # Adjust layout to remove unnecessary component and enlarge chat interfaces
+    with gr.Row():
+        gr.ChatInterface(
+            chatbot=bot_gpt4v,
+            fn=gpt4v_response,
+        )
 
     with gr.Row():
-        gr.ChatInterface(chatbot=bot_gemini, fn=gemini_response)
+        gr.ChatInterface(
+            chatbot=bot_gemini_pro,
+            fn=geminipro_response,
+        )
 
+    with gr.Row():
+        gr.ChatInterface(
+            chatbot=bot_gemini_exp,
+            fn=geminiexp_response,
+        )
+    
     runBtn.click(inference, inputs=[image, slider, mode, slider_alpha, label_mode, anno_mode],
                  outputs=image_out)
     highlightBtn.click(highlight, inputs=[image, mode, slider_alpha, label_mode, anno_mode],
                        outputs=image_out)
 
-demo.queue().launch(share=True,server_port=6092)
+demo.queue().launch(share=True, server_port=6092)
